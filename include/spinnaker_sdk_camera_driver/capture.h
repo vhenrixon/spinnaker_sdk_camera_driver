@@ -18,6 +18,7 @@
 
 #include <sstream>
 #include <image_transport/image_transport.h>
+#include <imu_vn_100/sync_trigger.h>
 
 using namespace Spinnaker;
 using namespace Spinnaker::GenApi;
@@ -67,7 +68,7 @@ namespace acquisition {
         void update_grid();
         void export_to_ROS();
         void dynamicReconfigureCallback(spinnaker_sdk_camera_driver::spinnaker_camConfig &config, uint32_t level);
-
+		void assignTimeStampCallback(const imu_vn_100::sync_trigger::ConstPtr& msg);
         float mem_usage();
     
         SystemPtr system_;    
@@ -104,13 +105,15 @@ namespace acquisition {
         string ext_;
         float exposure_time_;
         double target_grey_value_;
+        ros::Time latest_imu_trigger_time_;
+        uint32_t prev_imu_trigger_count_ = 0; 
+        uint32_t latest_imu_trigger_count_;
         // int decimation_;
         string tf_prefix_;        
         int soft_framerate_; // Software (ROS) frame rate
-        
         int MASTER_CAM_;
         int CAM_; // active cam during live
-
+		
         bool FIXED_NUM_FRAMES_;
         bool TIME_BENCHMARK_;
         bool MASTER_TIMESTAMP_FOR_ALL_;
@@ -140,6 +143,7 @@ namespace acquisition {
         dynamic_reconfigure::Server<spinnaker_sdk_camera_driver::spinnaker_camConfig>* dynamicReCfgServer_;
 
         ros::Publisher acquisition_pub;
+        ros::Subscriber timeStamp_sub;
         //vector<ros::Publisher> camera_image_pubs;
         vector<image_transport::CameraPublisher> camera_image_pubs;
         //vector<ros::Publisher> camera_info_pubs;

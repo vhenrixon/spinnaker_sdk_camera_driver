@@ -85,6 +85,12 @@ acquisition::Capture::Capture(): it_(nh_), nh_pvt_ ("~") {
     SPINNAKER_GET_NEXT_IMAGE_TIMEOUT_ = 2000;
     todays_date_ = todays_date();
     
+    // Initialise the time variables for sync in with camera
+    latest_imu_trigger_time_ = ros::Time::now();
+    prev_imu_trigger_count_ = 0; 
+    latest_imu_trigger_count_ = 0;
+    
+    
     dump_img_ = "dump" + ext_;
 
     grab_time_ = 0;
@@ -117,6 +123,9 @@ acquisition::Capture::Capture(): it_(nh_), nh_pvt_ ("~") {
  
     //initializing the ros publisher
     acquisition_pub = nh_.advertise<spinnaker_sdk_camera_driver::SpinnakerImageNames>("camera", 1000);
+    
+     // initiliazing the ros subscriber
+    timeStamp_sub = nh_.subscribe("/imu/sync_trigger", 1000, &acquisition::Capture::assignTimeStampCallback,this);
     //dynamic reconfigure
     dynamicReCfgServer_ = new dynamic_reconfigure::Server<spinnaker_sdk_camera_driver::spinnaker_camConfig>(nh_pvt_);
     
@@ -165,7 +174,12 @@ acquisition::Capture::Capture(ros::NodeHandle nodehandl, ros::NodeHandle private
     binning_ = 1;
     SPINNAKER_GET_NEXT_IMAGE_TIMEOUT_ = 2000;
     todays_date_ = todays_date();
-
+	
+	// Initialise the time variables for sync in with camera
+    latest_imu_trigger_time_ = ros::Time::now();
+    prev_imu_trigger_count_ = 0; 
+    latest_imu_trigger_count_ = 0;
+    
     dump_img_ = "dump" + ext_;
 
     grab_time_ = 0;
@@ -198,6 +212,9 @@ acquisition::Capture::Capture(ros::NodeHandle nodehandl, ros::NodeHandle private
 
     //initializing the ros publisher
     acquisition_pub = nh_.advertise<spinnaker_sdk_camera_driver::SpinnakerImageNames>("camera", 1000);
+    
+    // initiliazing the ros subscriber
+    timeStamp_sub = nh_.subscribe("/imu/sync_trigger", 1000, &acquisition::Capture::assignTimeStampCallback,this);
     //dynamic reconfigure
     dynamicReCfgServer_ = new dynamic_reconfigure::Server<spinnaker_sdk_camera_driver::spinnaker_camConfig>(nh_pvt_);
     
@@ -791,7 +808,26 @@ void acquisition::Capture::save_mat_frames(int dump) {
 void acquisition::Capture::export_to_ROS() {
     double t = ros::Time::now().toSec();
     std_msgs::Header img_msg_header;
-    img_msg_header.stamp = mesg.header.stamp;
+    
+    if (latest_imu_trigger_count_ - prev_imu_trigger_count_ > 1 )
+    {
+		ROS_WARN("Difference in trigger count more than 1, latest_count = %d and prev_count = %d",latest_imu_trigger_count_,prev_imu_trigger_count_);
+		
+	}
+	
+	else if (latest_imu_trigger_count_ - prev_imu_trigger_count_ == 0)
+	{	double wait_time_start = ros::Time::now().toSec();
+		ROS_WARN("Difference in trigger count zero, latest_count = %d and prev_count = %d",latest_imu_trigger_count_,prev_imu_trigger_count_);
+		while(latest_imu_trigger_count_ - prev_imu_trigger_count_ == 0)
+		{	
+			ros::Duration(0.0001).sleep();
+		}
+		ROS_INFO_STREAM("Time gap for sync messages: "<<ros::Time::now().toSec() - wait_time_start);
+	}
+	img_msg_header.stamp = latest_imu_trigger_time_;
+	prev_imu_trigger_count_ = latest_imu_trigger_count_;
+	
+    //img_msg_header.stamp = mesg.header.stamp;
     string frame_id_prefix;
     if (tf_prefix_.compare("") != 0)
         frame_id_prefix = tf_prefix_ +"/";
@@ -1251,4 +1287,11 @@ void acquisition::Capture::dynamicReconfigureCallback(spinnaker_sdk_camera_drive
             }
         }
     }
+}
+
+void acquisition::Capture::assignTimeStampCallback(const imu_vn_100::sync_trigger::ConstPtr& msg)
+{
+	//ROS_INFO_STREAM("Time stamp is "<< msg->header.stamp);
+	latest_imu_trigger_count_ = msg->data;
+	latest_imu_trigger_time_ = msg->header.stamp;
 }

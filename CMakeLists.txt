@@ -26,6 +26,9 @@ find_package(catkin REQUIRED COMPONENTS
   nodelet
 )
 
+# i f trigger package is is available use it 
+find_package(trigger_msgs)
+
 #find_package(PCL REQUIRED)
 
 ###
@@ -50,6 +53,13 @@ if(Boost_FOUND)
 elseif(NOT Boost_FOUND)
   message("Boost not found!")
 endif()
+
+# configure a header file to pass some of the CMake settings
+# to the source code
+configure_file (
+  "${PROJECT_SOURCE_DIR}/include/spinnaker_sdk_camera_driver/spinnaker_configure.h.in"
+  "${PROJECT_SOURCE_DIR}/include/spinnaker_sdk_camera_driver/spinnaker_configure.h"
+)
 
 add_message_files(
   FILES

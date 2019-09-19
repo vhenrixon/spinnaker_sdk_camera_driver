@@ -18,7 +18,10 @@
 
 #include <sstream>
 #include <image_transport/image_transport.h>
-#include <imu_vn_100/sync_trigger.h>
+
+#ifdef trigger_msgs_FOUND
+  #include <trigger_msgs/sync_trigger.h>
+#endif 
 
 using namespace Spinnaker;
 using namespace Spinnaker::GenApi;
@@ -68,7 +71,11 @@ namespace acquisition {
         void update_grid();
         void export_to_ROS();
         void dynamicReconfigureCallback(spinnaker_sdk_camera_driver::spinnaker_camConfig &config, uint32_t level);
-		void assignTimeStampCallback(const imu_vn_100::sync_trigger::ConstPtr& msg);
+        
+        #ifdef trigger_msgs_FOUND
+        void assignTimeStampCallback(const imu_vn_100::sync_trigger::ConstPtr& msg);
+        #endif
+        
         float mem_usage();
     
         SystemPtr system_;    

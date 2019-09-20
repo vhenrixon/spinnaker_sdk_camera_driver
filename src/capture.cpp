@@ -126,7 +126,9 @@ acquisition::Capture::Capture(): it_(nh_), nh_pvt_ ("~") {
     
     #ifdef trigger_msgs_FOUND
     // initiliazing the trigger subscriber
-    timeStamp_sub = nh_.subscribe("/imu/sync_trigger", 1000, &acquisition::Capture::assignTimeStampCallback,this);
+        if (EXTERNAL_TRIGGER_){
+            timeStamp_sub = nh_.subscribe("/imu/sync_trigger", 1000, &acquisition::Capture::assignTimeStampCallback,this);
+        }    
     #endif
     
     //dynamic reconfigure
@@ -218,7 +220,9 @@ acquisition::Capture::Capture(ros::NodeHandle nodehandl, ros::NodeHandle private
     
     #ifdef trigger_msgs_FOUND
     // initiliazing the trigger subscriber
-    timeStamp_sub = nh_.subscribe("/imu/sync_trigger", 1000, &acquisition::Capture::assignTimeStampCallback,this);
+        if (EXTERNAL_TRIGGER_){
+            timeStamp_sub = nh_.subscribe("/imu/sync_trigger", 1000, &acquisition::Capture::assignTimeStampCallback,this);
+        }    
     #endif
     
     //dynamic reconfigure
@@ -402,7 +406,7 @@ void acquisition::Capture::read_parameters() {
         
     #ifndef trigger_msgs_FOUND
       if (EXTERNAL_TRIGGER_)
-          ROS_WARN("  Using 'external_trigger'. Trigger msgs not found, will use machine timestamps");
+          ROS_WARN("  Using 'external_trigger'. Trigger msgs package not found, will use machine timestamps");
     #endif
 
 	// Unless external trigger is being used, a master cam needs to be specified
@@ -821,20 +825,25 @@ void acquisition::Capture::export_to_ROS() {
     std_msgs::Header img_msg_header;
     
     #ifdef trigger_msgs_FOUND
-        if (latest_imu_trigger_count_ - prev_imu_trigger_count_ > 1 ){
-            ROS_WARN("Difference in trigger count more than 1, latest_count = %d and prev_count = %d",latest_imu_trigger_count_,prev_imu_trigger_count_);
-        }
-      
-        else if (latest_imu_trigger_count_ - prev_imu_trigger_count_ == 0){
-            double wait_time_start = ros::Time::now().toSec();
-            ROS_WARN("Difference in trigger count zero, latest_count = %d and prev_count = %d",latest_imu_trigger_count_,prev_imu_trigger_count_);
-            while(latest_imu_trigger_count_ - prev_imu_trigger_count_ == 0){	
-                ros::Duration(0.0001).sleep();
+        if (EXTERNAL_TRIGGER_){
+            if (latest_imu_trigger_count_ - prev_imu_trigger_count_ > 1 ){
+                ROS_WARN("Difference in trigger count more than 1, latest_count = %d and prev_count = %d",latest_imu_trigger_count_,prev_imu_trigger_count_);
             }
-            ROS_INFO_STREAM("Time gap for sync messages: "<<ros::Time::now().toSec() - wait_time_start);
+          
+            else if (latest_imu_trigger_count_ - prev_imu_trigger_count_ == 0){
+                double wait_time_start = ros::Time::now().toSec();
+                ROS_WARN("Difference in trigger count zero, latest_count = %d and prev_count = %d",latest_imu_trigger_count_,prev_imu_trigger_count_);
+                while(latest_imu_trigger_count_ - prev_imu_trigger_count_ == 0){	
+                    ros::Duration(0.0001).sleep();
+                }
+                ROS_INFO_STREAM("Time gap for sync messages: "<<ros::Time::now().toSec() - wait_time_start);
+            }
+            img_msg_header.stamp = latest_imu_trigger_time_;
+            prev_imu_trigger_count_ = latest_imu_trigger_count_;
         }
-        img_msg_header.stamp = latest_imu_trigger_time_;
-        prev_imu_trigger_count_ = latest_imu_trigger_count_;
+        else {
+            img_msg_header.stamp = mesg.header.stamp;
+        }
     #endif
 
     #ifndef trigger_msgs_FOUND

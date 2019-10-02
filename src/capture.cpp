@@ -1330,8 +1330,10 @@ void acquisition::Capture::assignTimeStampCallback(const trigger_msgs::sync_trig
 {
 	//ROS_INFO_STREAM("Time stamp is "<< msg->header.stamp);
 	SyncInfo_ sync_info;
-    sync_info.latest_imu_trigger_count_ = msg->count;
-    sync_info.latest_imu_trigger_time_ = msg->header.stamp;
+  latest_imu_trigger_count_ = msg->count;
+  latest_imu_trigger_time_ = msg->header.stamp;
+    sync_info.latest_imu_trigger_count_ = latest_imu_trigger_count_;
+    sync_info.latest_imu_trigger_time_ = latest_imu_trigger_time_;
 	for (int i = 0; i < numCameras_; i++){
 	    sync_message_queue_vector_.at(i).push(sync_info);
 	}

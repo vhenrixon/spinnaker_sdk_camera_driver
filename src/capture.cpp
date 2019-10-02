@@ -218,13 +218,21 @@ acquisition::Capture::Capture(ros::NodeHandle nodehandl, ros::NodeHandle private
     //initializing the ros publisher
     acquisition_pub = nh_.advertise<spinnaker_sdk_camera_driver::SpinnakerImageNames>("camera", 1000);
     
+
     #ifdef trigger_msgs_FOUND
     // initiliazing the trigger subscriber
         if (EXTERNAL_TRIGGER_){
             timeStamp_sub = nh_.subscribe("/imu/sync_trigger", 1000, &acquisition::Capture::assignTimeStampCallback,this);
-        }    
+        }   
+            //initialise the time_message_queue_vector
+
+        for ( int i=0;i<numCameras_;i++){
+        std::queue<SyncInfo_> sync_message_queue;
+        sync_message_queue_vector_.push_back(sync_message_queue);
+    } 
     #endif
     
+
     //dynamic reconfigure
     dynamicReCfgServer_ = new dynamic_reconfigure::Server<spinnaker_sdk_camera_driver::spinnaker_camConfig>(nh_pvt_);
     
@@ -1144,6 +1152,7 @@ void acquisition::Capture::write_queue_to_disk(queue<ImagePtr>* img_q, int cam_n
     while (imageCnt < k_numImages){
 //     ROS_DEBUG_STREAM("  Write Queue to Disk for cam: "<< cam_no <<" size = "<<img_q->size());
 
+        // sleep for 5 milliseconds if the queue is empty
         if(img_q->empty()){
             boost::this_thread::sleep(boost::posix_time::milliseconds(5));
             continue;
@@ -1166,9 +1175,11 @@ void acquisition::Capture::write_queue_to_disk(queue<ImagePtr>* img_q, int cam_n
 //     ROS_DEBUG_STREAM("Writing to "<<filename.str().c_str());
 
         convertedImage->Save(filename.str().c_str());
-     
+        ROS_INFO("Queue size for cam %d is = %d",cam_no,sync_message_queue_vector_.at(cam_no).size());
+        ROS_INFO("Queue size for cam %d is = %d",cam_no,sync_message_queue_vector_.at(cam_no).size());
         queue_mutex_.lock();
         img_q->pop();
+        sync_message_queue_vector_.at(cam_no).pop();
         queue_mutex_.unlock();
 
         ROS_DEBUG_STREAM("Image saved at " << filename.str());
@@ -1255,8 +1266,11 @@ void acquisition::Capture::run_mt() {
         image_queue_vector.push_back(img_ptr_queue);
     }
 
+    // start
     threads.create_thread(boost::bind(&Capture::acquire_images_to_queue, this, &image_queue_vector));
 
+
+    // assign a new thread to write the nth image to disk acquired in a queue
     for (int i=0; i<numCameras_; i++)
         threads.create_thread(boost::bind(&Capture::write_queue_to_disk, this, &image_queue_vector.at(i), i));
 
@@ -1312,10 +1326,14 @@ void acquisition::Capture::dynamicReconfigureCallback(spinnaker_sdk_camera_drive
 }
 
 #ifdef trigger_msgs_FOUND
-void acquisition::Capture::assignTimeStampCallback(const imu_vn_100::sync_trigger::ConstPtr& msg)
+void acquisition::Capture::assignTimeStampCallback(const trigger_msgs::sync_trigger::ConstPtr& msg)
 {
 	//ROS_INFO_STREAM("Time stamp is "<< msg->header.stamp);
-	latest_imu_trigger_count_ = msg->data;
-	latest_imu_trigger_time_ = msg->header.stamp;
+	SyncInfo_ sync_info;
+    sync_info.latest_imu_trigger_count_ = msg->count;
+    sync_info.latest_imu_trigger_time_ = msg->header.stamp;
+	for (int i = 0; i < numCameras_; i++){
+	    sync_message_queue_vector_.at(i).push(sync_info);
+	}
 }
 #endif

@@ -24,6 +24,7 @@ find_package(catkin REQUIRED COMPONENTS
   sensor_msgs
   dynamic_reconfigure
   nodelet
+  trigger_msgs
 )
 
 # i f trigger package is is available use it 

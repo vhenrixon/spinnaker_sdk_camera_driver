@@ -4,7 +4,7 @@
 #include "std_include.h"
 #include "serialization.h"
 #include "camera.h"
-
+#include "spinnaker_configure.h"
 #include <boost/archive/binary_oarchive.hpp>
 #include <boost/filesystem.hpp>
 //ROS
@@ -73,7 +73,7 @@ namespace acquisition {
         void dynamicReconfigureCallback(spinnaker_sdk_camera_driver::spinnaker_camConfig &config, uint32_t level);
         
         #ifdef trigger_msgs_FOUND
-        void assignTimeStampCallback(const imu_vn_100::sync_trigger::ConstPtr& msg);
+        void assignTimeStampCallback(const trigger_msgs::sync_trigger::ConstPtr& msg);
         #endif
         
         float mem_usage();
@@ -138,6 +138,11 @@ namespace acquisition {
         bool PUBLISH_CAM_INFO_;
         uint64_t SPINNAKER_GET_NEXT_IMAGE_TIMEOUT_;
 
+        struct SyncInfo_{
+            uint32_t latest_imu_trigger_count_;
+            ros::Time latest_imu_trigger_time_;
+        };
+        std::vector<std::queue<SyncInfo_>> sync_message_queue_vector_;
         // grid view related variables
         bool GRID_CREATED_;
         Mat grid_;
@@ -159,7 +164,7 @@ namespace acquisition {
         vector<sensor_msgs::ImagePtr> img_msgs;
         vector<sensor_msgs::CameraInfoPtr> cam_info_msgs;
         spinnaker_sdk_camera_driver::SpinnakerImageNames mesg;
-        boost::mutex queue_mutex_;  
+        boost::mutex queue_mutex_;
     };
 
 }

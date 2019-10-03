@@ -115,6 +115,7 @@ namespace acquisition {
         ros::Time latest_imu_trigger_time_;
         uint32_t prev_imu_trigger_count_ = 0; 
         uint32_t latest_imu_trigger_count_;
+        bool first_image_received;
         // int decimation_;
         string tf_prefix_;        
         int soft_framerate_; // Software (ROS) frame rate

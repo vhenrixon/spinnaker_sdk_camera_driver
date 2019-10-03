@@ -89,7 +89,8 @@ acquisition::Capture::Capture(): it_(nh_), nh_pvt_ ("~") {
     latest_imu_trigger_time_ = ros::Time::now();
     prev_imu_trigger_count_ = 0; 
     latest_imu_trigger_count_ = 0;
-    
+    first_image_received = false;
+
     
     dump_img_ = "dump" + ext_;
 
@@ -184,7 +185,8 @@ acquisition::Capture::Capture(ros::NodeHandle nodehandl, ros::NodeHandle private
     latest_imu_trigger_time_ = ros::Time::now();
     prev_imu_trigger_count_ = 0; 
     latest_imu_trigger_count_ = 0;
-    
+    first_image_received = false;
+
     dump_img_ = "dump" + ext_;
 
     grab_time_ = 0;
@@ -193,7 +195,6 @@ acquisition::Capture::Capture(ros::NodeHandle nodehandl, ros::NodeHandle private
     save_mat_time_ = 0;
     export_to_ROS_time_ = 0;
     achieved_time_ = 0;
-
     // decimation_ = 1;
 
     CAM_ = 0;
@@ -418,6 +419,7 @@ void acquisition::Capture::read_parameters() {
     #endif
 
 	// Unless external trigger is being used, a master cam needs to be specified
+  // If the external trigger is set, all the cameras are set up as slave
     int mcam_int;
     if (!EXTERNAL_TRIGGER_){
 		ROS_ASSERT_MSG(nh_pvt_.getParam("master_cam", mcam_int),"master_cam is required!");
@@ -716,7 +718,9 @@ void acquisition::Capture::init_cameras(bool soft = false) {
                     //cams[i].setEnumValue("LineSource", "ExposureActive");
 
 
-                } else {
+                } else{ // sets the configuration for external trigger: used for all slave cameras 
+                  // in master slave setup. Also in the mode when another sensor such as IMU triggers 
+                  // the camera
                     cams[i].setEnumValue("TriggerMode", "On");
                     cams[i].setEnumValue("LineSelector", "Line3");
                     cams[i].setEnumValue("TriggerSource", "Line3");
@@ -1153,7 +1157,7 @@ void acquisition::Capture::write_queue_to_disk(queue<ImagePtr>* img_q, int cam_n
 //     ROS_DEBUG_STREAM("  Write Queue to Disk for cam: "<< cam_no <<" size = "<<img_q->size());
 
         // sleep for 5 milliseconds if the queue is empty
-        if(img_q->empty()){
+        if(img_q->empty() || sync_message_queue_vector_.at(cam_no).empty()){
             boost::this_thread::sleep(boost::posix_time::milliseconds(5));
             continue;
         }
@@ -1175,8 +1179,8 @@ void acquisition::Capture::write_queue_to_disk(queue<ImagePtr>* img_q, int cam_n
 //     ROS_DEBUG_STREAM("Writing to "<<filename.str().c_str());
 
         convertedImage->Save(filename.str().c_str());
-        ROS_INFO("Queue size for cam %d is = %d",cam_no,sync_message_queue_vector_.at(cam_no).size());
-        ROS_INFO("Queue size for cam %d is = %d",cam_no,sync_message_queue_vector_.at(cam_no).size());
+        ROS_INFO("image Queue size for cam %d is = %d",cam_no,img_q->size());
+        ROS_INFO("time Queue size for cam %d is = %d",cam_no,sync_message_queue_vector_.at(cam_no).size());
         queue_mutex_.lock();
         img_q->pop();
         sync_message_queue_vector_.at(cam_no).pop();
@@ -1204,8 +1208,10 @@ void acquisition::Capture::acquire_images_to_queue(vector<queue<ImagePtr>>*  img
         uint64_t timeStamp = 0;
         for (int i = 0; i < numCameras_; i++) {
             try {
+              //  grab_frame() is a blocking call. It waits for the next image acquired by the camera 
                 ImagePtr pResultImage = cams[i].grab_frame();
-
+                first_image_received = true;
+               
                 // Convert image to mono 8
                 ImagePtr convertedImage = pResultImage->Convert(PixelFormat_Mono8, HQ_LINEAR);
 
@@ -1326,16 +1332,17 @@ void acquisition::Capture::dynamicReconfigureCallback(spinnaker_sdk_camera_drive
 }
 
 #ifdef trigger_msgs_FOUND
-void acquisition::Capture::assignTimeStampCallback(const trigger_msgs::sync_trigger::ConstPtr& msg)
-{
+void acquisition::Capture::assignTimeStampCallback(const trigger_msgs::sync_trigger::ConstPtr& msg){
 	//ROS_INFO_STREAM("Time stamp is "<< msg->header.stamp);
 	SyncInfo_ sync_info;
   latest_imu_trigger_count_ = msg->count;
   latest_imu_trigger_time_ = msg->header.stamp;
     sync_info.latest_imu_trigger_count_ = latest_imu_trigger_count_;
     sync_info.latest_imu_trigger_time_ = latest_imu_trigger_time_;
-	for (int i = 0; i < numCameras_; i++){
+  if(first_image_received){
+    for (int i = 0; i < numCameras_; i++){
 	    sync_message_queue_vector_.at(i).push(sync_info);
-	}
+    }
+  }
 }
 #endif

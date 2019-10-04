@@ -3,7 +3,7 @@
 acquisition::Capture::~Capture(){
 
     // destructor
-
+    ROS_DEBUG("Destructor being called");
     ifstream file(dump_img_.c_str());
     if (file)
         if (remove(dump_img_.c_str()) != 0)
@@ -1166,10 +1166,29 @@ void acquisition::Capture::write_queue_to_disk(queue<ImagePtr>* img_q, int cam_n
 
         if (img_q->size()>100)
             ROS_WARN_STREAM("  Queue "<<cam_no<<" size is :"<< img_q->size());
-
+        if ( img_q->size() - sync_message_queue_vector_.at(cam_no).size() > 100){
+              ROS_WARN_STREAM(" The camera image size is increasing, the sync trigger messages are not coming at the desired rate");
+        }
         ImagePtr convertedImage = img_q->front();
-        uint64_t timeStamp =  convertedImage->GetTimeStamp() * 1000;
-
+        
+        #ifdef trigger_msgs_FOUND
+            uint64_t timeStamp;
+            if (EXTERNAL_TRIGGER_){
+            SyncInfo_ sync_info = sync_message_queue_vector_.at(cam_no).front();
+            sync_info.latest_imu_trigger_count_;
+            timeStamp = sync_info.latest_imu_trigger_time_.toSec() * 1e6;
+            ROS_INFO("time Queue size for cam %d is = %d",cam_no,sync_message_queue_vector_.at(cam_no).size());
+            sync_message_queue_vector_.at(cam_no).pop();
+            }
+            else{
+            timeStamp =  convertedImage->GetTimeStamp() * 1e6;
+            }
+        #endif
+        
+        #ifndef trigger_msgs_FOUND
+            uint64_t timeStamp = convertedImage->GetTimeStamp() * 1e6;
+        #endif
+        
         // Create a unique filename
         ostringstream filename;
         filename<<path_<<cam_names_[cam_no]<<"/"<<cam_names_[cam_no]
@@ -1180,10 +1199,10 @@ void acquisition::Capture::write_queue_to_disk(queue<ImagePtr>* img_q, int cam_n
 
         convertedImage->Save(filename.str().c_str());
         ROS_INFO("image Queue size for cam %d is = %d",cam_no,img_q->size());
-        ROS_INFO("time Queue size for cam %d is = %d",cam_no,sync_message_queue_vector_.at(cam_no).size());
+        
         queue_mutex_.lock();
         img_q->pop();
-        sync_message_queue_vector_.at(cam_no).pop();
+        
         queue_mutex_.unlock();
 
         ROS_DEBUG_STREAM("Image saved at " << filename.str());
@@ -1203,14 +1222,22 @@ void acquisition::Capture::acquire_images_to_queue(vector<queue<ImagePtr>>*  img
     int k_numImages = nframes_;
     auto start = ros::Time::now().toSec();
     auto elapsed = (ros::Time::now().toSec() - start)*1000;
-
+    
+    double flush_start_time = ros::Time::now().toSec();
+    while ((ros::Time::now().toSec() - flush_start_time) < 3.0){
+        for (int i = 0; i < numCameras_; i++) {
+            cams[i].grab_frame();
+        }
+        ROS_DEBUG("Flushing time elapsed: %.3f",ros::Time::now().toSec() - flush_start_time);
+    }
+        
+    first_image_received = true;
     for (int imageCnt = 0; imageCnt < k_numImages; imageCnt++) {
         uint64_t timeStamp = 0;
         for (int i = 0; i < numCameras_; i++) {
             try {
               //  grab_frame() is a blocking call. It waits for the next image acquired by the camera 
                 ImagePtr pResultImage = cams[i].grab_frame();
-                first_image_received = true;
                
                 // Convert image to mono 8
                 ImagePtr convertedImage = pResultImage->Convert(PixelFormat_Mono8, HQ_LINEAR);
@@ -1241,10 +1268,11 @@ void acquisition::Capture::acquire_images_to_queue(vector<queue<ImagePtr>>*  img
                 result = -1;
             }
             if(i==0) {
-                elapsed = (ros::Time::now().toSec() - start)*1000;
-                start = ros::Time::now().toSec();
+                double time_current_img_recieved = ros::Time::now().toSec();
+                camera_trigger_rate = 1/(time_current_img_recieved - time_prev_img_recieved);
+                time_prev_img_recieved = time_current_img_recieved;
                 //cout << "Microsecs passed: " << microseconds << endl;
-                ROS_DEBUG_STREAM("Rate of cam 0 write to queue: " << 1e3/elapsed);
+                ROS_DEBUG_STREAM("Rate of cam 0 write to queue: " << camera_trigger_rate);
             }
         }
         mesg.name = imageNames;
@@ -1280,7 +1308,7 @@ void acquisition::Capture::run_mt() {
     for (int i=0; i<numCameras_; i++)
         threads.create_thread(boost::bind(&Capture::write_queue_to_disk, this, &image_queue_vector.at(i), i));
 
-    ROS_DEBUG("Joining all threads");
+    //ROS_DEBUG("Joining all threads");
     threads.join_all();
     ROS_DEBUG("All Threads Joined");
 }
@@ -1290,6 +1318,7 @@ void acquisition::Capture::run() {
 		run_mt();
 	else
 		run_soft_trig();
+    ROS_DEBUG("Run completed");
 }
 
 std::string acquisition::Capture::todays_date()
@@ -1332,17 +1361,23 @@ void acquisition::Capture::dynamicReconfigureCallback(spinnaker_sdk_camera_drive
 }
 
 #ifdef trigger_msgs_FOUND
-void acquisition::Capture::assignTimeStampCallback(const trigger_msgs::sync_trigger::ConstPtr& msg){
-	//ROS_INFO_STREAM("Time stamp is "<< msg->header.stamp);
-	SyncInfo_ sync_info;
-  latest_imu_trigger_count_ = msg->count;
-  latest_imu_trigger_time_ = msg->header.stamp;
-    sync_info.latest_imu_trigger_count_ = latest_imu_trigger_count_;
-    sync_info.latest_imu_trigger_time_ = latest_imu_trigger_time_;
-  if(first_image_received){
-    for (int i = 0; i < numCameras_; i++){
-	    sync_message_queue_vector_.at(i).push(sync_info);
+    void acquisition::Capture::assignTimeStampCallback(const trigger_msgs::sync_trigger::ConstPtr& msg){
+        //ROS_INFO_STREAM("Time stamp is "<< msg->header.stamp);
+        
+        SyncInfo_ sync_info;
+        latest_imu_trigger_count_ = msg->count;
+        latest_imu_trigger_time_ = msg->header.stamp;
+        sync_info.latest_imu_trigger_count_ = latest_imu_trigger_count_;
+        sync_info.latest_imu_trigger_time_ = latest_imu_trigger_time_;
+        ROS_DEBUG("Sync trigger receieved");
+        if(first_image_received){
+            for (int i = 0; i < numCameras_; i++){
+                sync_message_queue_vector_.at(i).push(sync_info);
+                ROS_DEBUG("Sync trigger added to cam: %d, length of queue: %d",i,sync_message_queue_vector_.at(i).size());
+            }
+        }
+        double curr_time_msg_recieved = ros::Time::now().toSec();
+        sync_trigger_rate = 1/(curr_time_msg_recieved - last_time_msg_recieved);
+        last_time_msg_recieved = curr_time_msg_recieved;
     }
-  }
-}
 #endif

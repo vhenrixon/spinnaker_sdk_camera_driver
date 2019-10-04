@@ -138,7 +138,8 @@ namespace acquisition {
         bool MAX_RATE_SAVE_;
         bool PUBLISH_CAM_INFO_;
         uint64_t SPINNAKER_GET_NEXT_IMAGE_TIMEOUT_;
-
+        double sync_trigger_rate,camera_trigger_rate;
+        double time_prev_img_recieved,last_time_msg_recieved;
         struct SyncInfo_{
             uint32_t latest_imu_trigger_count_;
             ros::Time latest_imu_trigger_time_;

@@ -21,11 +21,11 @@ acquisition::Capture::~Capture(){
     cout<<"Clearing camList...\n";
     camList_.Clear();
 
-    cout<<"Releasing camera pointers...";
+    cout<<"Releasing camera pointers...\n";
     for (int i=0; i<cams.size(); i++)
         cams[i].~Camera();
     
-    cout<<"Releasing system instance...";
+    cout<<"Releasing system instance...\n";
     system_->ReleaseInstance();
 
     delete dynamicReCfgServer_;

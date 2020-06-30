@@ -354,12 +354,12 @@ void acquisition::Capture::read_parameters() {
 
     ROS_INFO("  Camera IDs:");
     
-    std::vector<int> cam_id_vec;
+    std::vector<std::string> cam_id_vec;
     ROS_ASSERT_MSG(nh_pvt_.getParam("cam_ids", cam_id_vec),"If cam_aliases are provided, they should be the same number as cam_ids and should correspond in order!");
     int num_ids = cam_id_vec.size();
     for (int i=0; i < num_ids; i++){
-        cam_ids_.push_back(to_string(cam_id_vec[i]));
-        ROS_INFO_STREAM("    " << to_string(cam_id_vec[i]));
+        cam_ids_.push_back(cam_id_vec[i]);
+        ROS_INFO_STREAM("    " << cam_id_vec[i]);
     }
 
     std::vector<string> cam_alias_vec;
@@ -375,9 +375,9 @@ void acquisition::Capture::read_parameters() {
             cam_names_.push_back(cam_ids_[i]);
     }
 
-    int mcam_int;
+    std::string mcam_int;
     ROS_ASSERT_MSG(nh_pvt_.getParam("master_cam", mcam_int),"master_cam is required!");
-    master_cam_id_=to_string(mcam_int);
+    master_cam_id_= mcam_int;
     bool found = false;
     for (int i=0; i<cam_ids_.size(); i++) {
         if (master_cam_id_.compare(cam_ids_[i]) == 0)
@@ -585,25 +585,24 @@ void acquisition::Capture::init_array() {
     
     ROS_INFO_STREAM("*** FLUSH SEQUENCE ***");
 
-    init_cameras(true);
+    
+    //init_cameras(true);
+    //start_acquisition();
+    //sleep(init_delay_*0.5);
 
-    start_acquisition();
-    sleep(init_delay_*0.5);
+    //end_acquisition();
+    //sleep(init_delay_*0.5);
+    //deinit_cameras();
 
-    end_acquisition();
-    sleep(init_delay_*0.5);
-
-    deinit_cameras();
-    sleep(init_delay_*2.0);
-
-    init_cameras(false);
+    //sleep(init_delay_*2.0);
+    
+    //init_cameras(true);
 
     ROS_DEBUG_STREAM("Flush sequence done.");
 
 }
 
 void acquisition::Capture::init_cameras(bool soft = false) {
-
     ROS_INFO_STREAM("Initializing cameras...");
     
     // Set cameras 1 to 4 to continuous
@@ -692,6 +691,7 @@ void acquisition::Capture::start_acquisition() {
     for (int i = numCameras_-1; i>=0; i--)
         cams[i].begin_acquisition();
 
+
     // for (int i=0; i<numCameras_; i++)
     //     cams[i].begin_acquisition();
     
@@ -708,13 +708,15 @@ void acquisition::Capture::deinit_cameras() {
 
     ROS_INFO_STREAM("Deinitializing cameras...");
 
-    // end_acquisition();
+    //end_acquisition();
     
     for (int i = numCameras_-1 ; i >=0 ; i--) {
-
+        
         ROS_DEBUG_STREAM("Camera "<<i<<": Deinit...");
+        ROS_INFO_STREAM("YEet");
         cams[i].deinit();
-        // pCam = NULL;
+
+        //pCam = NULL;
     }
     ROS_INFO_STREAM("All cameras deinitialized."); 
 
@@ -882,7 +884,8 @@ void acquisition::Capture::get_mat_images() {
 void acquisition::Capture::run_soft_trig() {
     achieved_time_ = ros::Time::now().toSec();
     ROS_INFO("*** ACQUISITION ***");
-    
+    init_cameras(true);
+    sleep(init_delay_*2.0);
     start_acquisition();
 
     // Camera directories created at first save
@@ -891,7 +894,7 @@ void acquisition::Capture::run_soft_trig() {
 
     int count = 0;
     
-    cams[MASTER_CAM_].trigger();
+    //cams[MASTER_CAM_].trigger();
     get_mat_images();
     if (SAVE_) {
         count++;
@@ -931,7 +934,7 @@ void acquisition::Capture::run_soft_trig() {
                     if (CAM_>0)
                         CAM_--;
                 } else if( (key & 255)==84 && MANUAL_TRIGGER_) { // t
-                    cams[MASTER_CAM_].trigger();
+                    //cams[MASTER_CAM_].trigger();
                     get_mat_images();
                 } else if( (key & 255)==32 && !SAVE_) { // SPACE
                     ROS_INFO_STREAM("Saving frame...");
@@ -957,7 +960,7 @@ void acquisition::Capture::run_soft_trig() {
 
             // Call update functions
             if (!MANUAL_TRIGGER_) {
-                cams[MASTER_CAM_].trigger();
+                //cams[MASTER_CAM_].trigger();
                 get_mat_images();
             }
 

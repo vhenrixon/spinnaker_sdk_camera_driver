@@ -56,7 +56,7 @@ ImagePtr acquisition::Camera::grab_frame() {
             ROS_WARN_STREAM_COND(frameID_ > lastFrameID_ + 1,"Frames are being skipped!");
         } else {
             frameID_ = pResultImage->GetFrameID();
-            ROS_ASSERT_MSG(frameID_ == 0 ,"First frame ID was not zero! Might cause sync issues later...");
+            //ROS_ASSERT_MSG(frameID_ == 0 ,"First frame ID was not zero! Might cause sync issues later...");
         }
 
     }
@@ -113,6 +113,7 @@ void acquisition::Camera::begin_acquisition() {
 
     ROS_DEBUG_STREAM("Begin Acquisition...");
     pCam_->BeginAcquisition();
+    pCam_->AcquisitionMode.SetValue(AcquisitionMode_Continuous);
     
 }
 
@@ -285,7 +286,7 @@ void acquisition::Camera::setPixelFormat(gcstring formatPic) {
 
 void acquisition::Camera::trigger() {
 
-    INodeMap & nodeMap = pCam_->GetNodeMap();
+    INodeMap& nodeMap = pCam_->GetNodeMap();
     
     CCommandPtr ptr = nodeMap.GetNode("TriggerSoftware");
     if (!IsAvailable(ptr) || !IsWritable(ptr))

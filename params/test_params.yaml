@@ -18,9 +18,8 @@ delay: 1.0
 #to_ros: true  #When to_ros is not selected, but live is selected, pressing 'space' exports single image to ROS
 #Camera info message details
 #distortion_model: plumb_bob
-start_nodelet_manager: false
 image_height: 1080
-image_width: 1924
+image_width: 1920
 #distortion_coeffs:
 #- [-0.021141875266089592, -0.3733872931278025, 2.385982550579459, 3.2824571732099725]
 

@@ -46,20 +46,24 @@ namespace acquisition {
         void setBufferSize(int numBuf);
         void adcBitDepth(gcstring bitDep);
         void targetGreyValueTest();
+        void zoom_out();
+            // void set_acquisition_mode_continuous();
+            // void set_frame_rate(float);
+            // void set_horizontal_binning(int);
+            // void set_vertical_binning(int);
+            // void set_horizontal_decimation(int);
+            // void set_vertical_decimation(int);
 
-        // void set_acquisition_mode_continuous();
-        // void set_frame_rate(float);
-        // void set_horizontal_binning(int);
-        // void set_vertical_binning(int);
-        // void set_horizontal_decimation(int);
-        // void set_vertical_decimation(int);
+            // void setTrigDelay(float delay);
+            // void setTrigSelectorFrame();
+            // void setTrigMode();
+            // void setTriggerOverlapOff();
 
-        // void setTrigDelay(float delay);
-        // void setTrigSelectorFrame();
-        // void setTrigMode();
-        // void setTriggerOverlapOff();
-
-        string get_id() { return string(pCam_->GetUniqueID()); }
+            string
+            get_id()
+        {
+            return string(pCam_->GetUniqueID());
+        }
         void make_master() { MASTER_ = true; ROS_DEBUG_STREAM( "camera " << get_id() << " set as master"); }
         bool is_master() { return MASTER_; }
         void set_color(bool flag) { COLOR_ = flag; }

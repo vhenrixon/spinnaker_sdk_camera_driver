@@ -1,4 +1,7 @@
 #include "spinnaker_sdk_camera_driver/capture.h"
+using namespace Spinnaker;
+using namespace Spinnaker::GenApi;
+using namespace Spinnaker::GenICam;
 
 acquisition::Capture::~Capture(){
 
@@ -614,6 +617,19 @@ void acquisition::Capture::init_cameras(bool soft = false) {
             
             cams[i].init();
 
+            INodeMap &nodemap = cams[i]->GetNodeMap();
+            CIntegerPtr offset_x_ptr = nodemap.GetNode("OffsetX");
+            if (IsAvailable(offset_x_ptr) && IsWritable(offset_x_ptr))
+                offset_x_ptr->SetValue(0);
+            CIntegerPtr offset_y_ptr = nodemap.GetNode("OffsetY");
+            if (IsAvailable(offset_y_ptr) && IsWritable(offset_y_ptr))
+                offset_y_ptr->SetValue(0);
+            CIntegerPtr width_ptr = nodemap.GetNode("Width");
+            if (IsAvailable(width_ptr) && IsWritable(width_ptr))
+                width_ptr->SetValue(width_ptr->GetMax());
+            CIntegerPtr height_ptr = nodemap.GetNode("Height");
+            if (IsAvailable(height_ptr) && IsWritable(height_ptr))
+                height_ptr->SetValue(height_ptr->GetMax());
             if (!soft) {
 
                 cams[i].set_color(color_);

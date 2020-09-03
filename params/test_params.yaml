@@ -1,38 +1,37 @@
 cam_ids:
-  - 00B09DBEC32D
+  - 01340DA9
 cam_aliases:
   - cam0
-master_cam: 00B09DBEC32D
+master_cam: 01340DA9
 skip: 20
 delay: 1.0
 
 # Assign all the follwing via launch file to prevent confusion and conflict
 
-#save_path: ~/projects/data
-#save_type: .bmp #binary or .tiff or .bmp
+save_path: ~/projects/data
+save_type: .bmp #binary or .tiff or .bmp
 #binning: 1 # going from 2 to 1 requires cameras to be unplugged and replugged
-#color: false
-#frames: 50
+frames: 60
 #soft_framerate: 20 # this frame rate reflects to the software frame rate set using ros::rate
 #exp: 997
 to_ros: true  #When to_ros is not selected, but live is selected, pressing 'space' exports single image to ROS
 #Camera info message details
-#distortion_model: plumb_bob
-image_height: 480
-image_width: 640
-distortion_coeffs:
-- [0.283600, 0.136765, -0.023597, -0.111527]
+distortion_model: plumb_bob
+image_height: 1080
+image_width: 2000
+
+#distortion_coeffs:
+#- [0.283600, 0.136765, -0.023597, -0.111527]
 
 
 #specified as [fx  0 cx 0 fy cy 0  0  1]
-intrinsic_coeffs:
-- [2669.328086, 0.0,  540.743566, 0.0, 2607.600518,  249.349171, 0.0, 0.0, 1.0]
+#intrinsic_coeffs:
+#- [2669.328086, 0.0,  540.743566, 0.0, 2607.600518,  249.349171, 0.0, 0.0, 1.0]
 
-rectification_coeffs:
-- [1.000000, 0.000000, 0.000000, 0.000000, 1.000000, 0.000000, 0.000000, 0.000000, 1.000000]
-
-projection_coeffs:
-- [2596.925293, 0.000000, 461.603758, 0.000000, 0.000000, 2752.997070, 245.996944, 0.000000, 0.000000, 0.000000, 1.000000, 0.000000]
+#rectification_coeffs:
+#- [1.000000, 0.000000, 0.000000, 0.000000, 1.000000, 0.000000, 0.000000, 0.000000, 1.000000]
+#projection_coeffs:
+#- [2596.925293, 0.000000, 461.603758, 0.000000, 0.000000, 2752.997070, 245.996944, 0.000000, 0.000000, 0.000000, 1.000000, 0.000000]
 
 
 

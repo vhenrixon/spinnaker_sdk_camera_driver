@@ -1,7 +1,5 @@
 #include "spinnaker_sdk_camera_driver/capture.h"
-using namespace Spinnaker;
-using namespace Spinnaker::GenApi;
-using namespace Spinnaker::GenICam;
+
 
 acquisition::Capture::~Capture(){
 
@@ -235,12 +233,14 @@ void acquisition::Capture::load_cameras() {
 
             if (cam.get_id().compare(cam_ids_[j]) == 0) {
                 current_cam_found=true;
+                /*
                 if (cam.get_id().compare(master_cam_id_) == 0) {
                     cam.make_master();
                     master_set = true;
                     MASTER_CAM_ = cam_counter;
                 }
-
+                */
+                master_set = true;
                 ImagePtr a_null;
                 pResultImages_.push_back(a_null);
 
@@ -590,18 +590,100 @@ void acquisition::Capture::init_array() {
 
 
     //init_cameras(true);
+    //init_single_camera(cams[cams.size()], false);
+    //sleep(init_delay_*2);
     //start_acquisition();
-    //sleep(init_delay_*0.5);
+    //sleep(init_delay_*2);
 
-    //end_acquisition();
-    //sleep(init_delay_*0.5);
+   // end_acquisition();
+    //sleep(init_delay_*2);
     //deinit_cameras();
-
-    //sleep(init_delay_*2.0);
-
-    //init_cameras(true);
-
+    //sleep(init_delay_*2);
+    //init_cameras(false);
     ROS_DEBUG_STREAM("Flush sequence done.");
+
+}
+void acquisition::Capture::init_single_camera(acquisition::Camera cam, bool soft = false){
+        ROS_INFO_STREAM("Initializing cameras...");
+
+    // Set cameras 1 to 4 to continuous
+
+        try {
+
+            cam.init();
+
+
+            if (!soft) {
+                cam.setResolutionPixels(1928, 1320);
+                cam.setIntValue("OffsetX", 0);
+                cam.setIntValue("OffsetY", 0);
+                cam.set_color(color_);
+                cam.setIntValue("BinningHorizontal", binning_);
+                cam.setIntValue("BinningVertical", binning_);
+
+                cam.setEnumValue("ExposureMode", "Timed");
+                if (exposure_time_ > 0) {
+                    cam.setEnumValue("ExposureAuto", "Off");
+                    cam.setFloatValue("ExposureTime", exposure_time_);
+                } else {
+                    cam.setEnumValue("ExposureAuto", "Continuous");
+                }
+                if (target_grey_value_ > 4.0) {
+                    cam.setEnumValue("AutoExposureTargetGreyValueAuto", "Off");
+                    cam.setFloatValue("AutoExposureTargetGreyValue", target_grey_value_);
+                } else {
+                    cam.setEnumValue("AutoExposureTargetGreyValueAuto", "Continuous");
+                }
+
+                // cams[i].setIntValue("DecimationHorizontal", decimation_);
+                // cams[i].setIntValue("DecimationVertical", decimation_);
+                // cams[i].setFloatValue("AcquisitionFrameRate", 5.0);
+                std::cout << cams[0].get_id() << std::endl; 
+                if (color_)
+                    cam.setEnumValue("PixelFormat", "BGR8");
+                    else
+                        cam.setEnumValue("PixelFormat", "Mono8");
+                cam.setEnumValue("AcquisitionMode", "Continuous");
+
+                // set only master to be software triggered
+                if (cam.is_master()) {
+                    if (MAX_RATE_SAVE_){
+                        cam.setEnumValue("LineSelector", "Line2");
+                        cam.setEnumValue("LineMode", "Output");
+                        cam.setBoolValue("AcquisitionFrameRateEnable", false);
+                        //cams[i].setFloatValue("AcquisitionFrameRate", 170);
+                    }else{
+                        cam.setEnumValue("TriggerMode", "On");
+                        cam.setEnumValue("LineSelector", "Line2");
+                        cam.setEnumValue("LineMode", "Output");
+                        cam.setEnumValue("TriggerSource", "Software");
+                    }
+                    //cams[i].setEnumValue("LineSource", "ExposureActive");
+
+
+                } else {
+                    cam.setEnumValue("TriggerMode", "On");
+                    cam.setEnumValue("LineSelector", "Line3");
+                    cam.setEnumValue("TriggerSource", "Line3");
+                    cam.setEnumValue("TriggerSelector", "FrameStart");
+                    cam.setEnumValue("LineMode", "Input");
+
+    //                    cams[i].setFloatValue("TriggerDelay", 40.0);
+                    cam.setEnumValue("TriggerOverlap", "ReadOut");//"Off"
+                    cam.setEnumValue("TriggerActivation", "RisingEdge");
+                }
+            }
+        }
+
+        catch (Spinnaker::Exception &e) {
+            string error_msg = e.what();
+            ROS_FATAL_STREAM("Error: " << error_msg);
+            if (error_msg.find("Unable to set PixelFormat to BGR8") >= 0)
+              ROS_WARN("Most likely cause for this error is if your camera can't support color and your are trying to set it to color mode");
+            ros::shutdown();
+        }
+
+    ROS_DEBUG_STREAM("All cameras initialized.");
 
 }
 
@@ -612,21 +694,21 @@ void acquisition::Capture::init_cameras(bool soft = false) {
     for (int i = numCameras_-1 ; i >=0 ; i--) {
 
         ROS_DEBUG_STREAM("Initializing camera " << cam_ids_[i] << "...");
-
+        std::cout << cams[i].get_id() << std::endl; 
         try {
 
             cams[i].init();
-
-            cams[i].setResolutionPixels(1928, 1320);
-            cams[i].setIntValue("OffsetX", 0);
-            cams[i].setIntValue("OffsetY", 0);
-
+            //cams[i].setResolutionPixels(1928, 1320);
+            //cams[i].setIntValue("OffsetX", 0);
+            //cams[i].setIntValue("OffsetY", 0);
+            
             if (!soft) {
 
-                cams[i].set_color(color_);
+                //cams[i].set_color(color_);
+                std::cout << cams[i].get_id() << std::endl; 
                 cams[i].setIntValue("BinningHorizontal", binning_);
                 cams[i].setIntValue("BinningVertical", binning_);
-
+                
                 cams[i].setEnumValue("ExposureMode", "Timed");
                 if (exposure_time_ > 0) {
                     cams[i].setEnumValue("ExposureAuto", "Off");
@@ -640,7 +722,6 @@ void acquisition::Capture::init_cameras(bool soft = false) {
                 } else {
                     cams[i].setEnumValue("AutoExposureTargetGreyValueAuto", "Continuous");
                 }
-
                 // cams[i].setIntValue("DecimationHorizontal", decimation_);
                 // cams[i].setIntValue("DecimationVertical", decimation_);
                 // cams[i].setFloatValue("AcquisitionFrameRate", 5.0);
@@ -678,6 +759,7 @@ void acquisition::Capture::init_cameras(bool soft = false) {
                     cams[i].setEnumValue("TriggerOverlap", "ReadOut");//"Off"
                     cams[i].setEnumValue("TriggerActivation", "RisingEdge");
                 }
+                
             }
         }
 
@@ -716,11 +798,10 @@ void acquisition::Capture::deinit_cameras() {
     ROS_INFO_STREAM("Deinitializing cameras...");
 
     //end_acquisition();
-
+    std::cout << "yeeee " << std::endl;
     for (int i = numCameras_-1 ; i >=0 ; i--) {
-
+        std::cout << "yeeee " << std::endl;
         ROS_DEBUG_STREAM("Camera "<<i<<": Deinit...");
-        ROS_INFO_STREAM("YEet");
         cams[i].deinit();
 
         //pCam = NULL;

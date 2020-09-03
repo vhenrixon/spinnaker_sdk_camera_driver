@@ -36,7 +36,7 @@ namespace acquisition {
         Capture( ros::NodeHandle node,ros::NodeHandle private_nh);
 
         void load_cameras();
-        
+        void init_single_camera(acquisition::Camera cam, bool soft);
         void init_array();
         void init_cameras(bool);
         void start_acquisition();

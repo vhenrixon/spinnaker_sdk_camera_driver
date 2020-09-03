@@ -131,16 +131,16 @@ void acquisition::Camera::zoom_out(){
     INodeMap &nodemap = pCam_->GetNodeMap();
     CIntegerPtr offset_x_ptr = nodemap.GetNode("OffsetX");
     if (IsAvailable(offset_x_ptr) && IsWritable(offset_x_ptr))
-        offset_x_ptr->SetValue(0);
+        offset_x_ptr->SetIntValue(0);
     CIntegerPtr offset_y_ptr = nodemap.GetNode("OffsetY");
     if (IsAvailable(offset_y_ptr) && IsWritable(offset_y_ptr))
-        offset_y_ptr->SetValue(0);
+        offset_y_ptr->SetIntValue(0);
     CIntegerPtr width_ptr = nodemap.GetNode("Width");
     if (IsAvailable(width_ptr) && IsWritable(width_ptr))
-        width_ptr->SetValue(width_ptr->GetMax());
+        width_ptr->SetIntValue(width_ptr->GetMax());
     CIntegerPtr height_ptr = nodemap.GetNode("Height");
     if (IsAvailable(height_ptr) && IsWritable(height_ptr))
-        height_ptr->SetValue(height_ptr->GetMax());
+        height_ptr->SetIntValue(height_ptr->GetMax());
 }
 
 void acquisition::Camera::setEnumValue(string setting, string value) {

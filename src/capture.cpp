@@ -701,7 +701,7 @@ void acquisition::Capture::init_cameras(bool soft = false) {
             //cams[i].setResolutionPixels(1928, 1320);
             //cams[i].setIntValue("OffsetX", 0);
             //cams[i].setIntValue("OffsetY", 0);
-            
+            /*
             if (!soft) {
 
                 //cams[i].set_color(color_);
@@ -759,6 +759,7 @@ void acquisition::Capture::init_cameras(bool soft = false) {
                     cams[i].setEnumValue("TriggerOverlap", "ReadOut");//"Off"
                     cams[i].setEnumValue("TriggerActivation", "RisingEdge");
                 }
+                */
                 
             }
         }
